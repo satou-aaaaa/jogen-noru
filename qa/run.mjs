@@ -514,7 +514,7 @@ try {
     const bad = [], small = [];
     for (const [w, fs] of [[320, 3], [390, 2], [320, 1]]) {
       const q = await newPage(w); await closeHow(q);
-      await q.evaluate((fs) => localStorage.setItem("jgn-fs", String(fs)), fs); await q.reload(); await q.waitForTimeout(150);
+      await q.evaluate((fs) => (localStorage.setItem("jgn-fs", String(fs)), localStorage.setItem("a11y-v1", JSON.stringify({ ...JSON.parse(localStorage.getItem("a11y-v1") || "{}"), fs: undefined }))), fs); await q.reload(); await q.waitForTimeout(150);
       for (const go of [null, "#go-d", "s1", "s2", "solve", "#go-cal", "#go-dex", "#go-ach", "#go-e"]) {
         if (go === "s1") await step1(q, true);
         else if (go === "s2") await step2(q, false);
