@@ -1,0 +1,9 @@
+{
+  "screens": [
+    { "name": "今日の5問", "click": ["#go-d"] },
+    { "name": "今日の5問（② 助言と自信）", "click": ["#go-d", "#choices .ch"] },
+    { "name": "練習", "click": ["#go-p"] },
+    { "name": "見くらべ帳", "click": ["#go-dex"] },
+    { "name": "このゲームについて", "click": ["#f-about"] }
+  ]
+}
