@@ -70,7 +70,9 @@ function placedOk(pts, w) {
   check(`問題：${G.KINDS.length}種類×${N}の種で、答えを図の数・長さから数え直して合う・点が重ならず箱に入る・比と自信が難しさの範囲・助言ロボの答えと当たりが合う・出典がある`, Object.keys(bad).length === 0, JSON.stringify(bad));
   check("問題：種類は9（点の数・丸と三角・線の長さ×難しさ3）", G.KINDS.length === 9 && [0, 1, 2].map((l) => G.kindsOf(l).length).join() === "3,3,3");
   check("問題は300種類以上（game-dev.md F6）", keys.size >= 300, keys.size);
-  check("作れない鍵（無い種類・constructor・印がちがう）は null", [G.make("constructor|1"), G.make("nai|1"), G.make("dot0|1|z"), G.make("dot0"), G.make("dot0|1|o|x")].every((x) => x === null));
+  check("作れない鍵（無い種類・constructor・種が無い）は null", [G.make("constructor|1"), G.make("nai|1"), G.make("dot0")].every((x) => x === null));
+  // 種に | が入っても作れる（終わりの o・x だけが当たり外れの印。shared-workflows game-props の CI で "mix2|x|y" が作れず落ちた）
+  check("種に | が入っても問題が作れ、終わりの o・x だけを当たり外れの印とみる", ["mix2|x|y", "dot0|1|z", "len1|a|b|c"].every((t) => { const P = G.make(t); return P && P.ans && JSON.stringify(P) === JSON.stringify(G.make(t)); }) && G.make("dot1|a|b|o").aiOk === true && G.make("dot1|a|b|x").aiOk === false && JSON.stringify(G.make("dot1|a|b|o").box) === JSON.stringify(G.make("dot1|a|b").box));
   // 練習・とことんの助言ロボは、自信の%くらいの割合で当たる（難しさごとに3000問ずつ）
   const cal = [0, 1, 2].map((lv) => { let n = 0, ok = 0, c = 0; for (const id of G.kindsOf(lv)) for (let s = 0; s < 1000; s++) { const P = G.make(`${id}|cal${s}`); n++; ok += P.aiOk ? 1 : 0; c += P.conf / 100; } return [ok / n, c / n]; });
   check("練習の助言ロボは、自信の%どおりに当たる（難しさごとに差 2%以内）・自信が低いほど外れやすい", cal.every(([a, c]) => Math.abs(a - c) < 0.02) && cal[0][0] > cal[1][0] && cal[1][0] > cal[2][0], cal.map((x) => x.map((v) => v.toFixed(3)).join("/")).join(" "));

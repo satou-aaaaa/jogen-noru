@@ -38,7 +38,7 @@
     mix2: "ちがいは数個だけ。数えれば分かりますが、手間がかかります。手間と助言のどちらを使うかが分かれ目です。",
     len0: "長さのちがいが大きいと、向きがちがっても分かります。",
     len1: "線の向きがちがうと、長さはくらべにくくなります。",
-    len2: "はしの矢羽で、長さの見え方が変わります（ミュラー・リヤー錯視）。矢じりの形（<—>）は短く、開いた形（>—<）は長く見えます。",
+    len2: "はしの矢羽で、長さの見え方が変わります（ミュラー・リヤー錯視）。はしが矢じりの形だと短く、羽が外へ開く形だと長く見えます。",
   };
 
   // part:ri:begin（shared-workflows の template/parts/data/ri.js の写し。ここでは直さない。node scripts/sync-template.mjs で写す）
@@ -78,10 +78,12 @@
   function counts(R, lv, lo, hi) { const a = ri(R, lo, hi), [p, q] = RATIO.cnt[lv], r = p + R() * (q - p); return [a, Math.max(a + (lv === 2 ? 2 : 1), Math.round(a * r))]; }
 
   // 1問を作る。tag は「種類|種」か「種類|種|o（当たる）・x（外れる）」。同じ tag ならいつも同じ問題・同じ助言
+  // 種に | が入っていても作る（終わりが |o・|x のときだけ当たり外れの印とみる。shared-workflows game-props の「どんな種でも作れる」）
   function make(tag) {
     const ps = String(tag).split("|"), kind = ps[0], k = Object.prototype.hasOwnProperty.call(BY, kind) ? BY[kind] : null;
-    if (!k || ps.length < 2 || ps.length > 3 || (ps.length === 3 && ps[2] !== "o" && ps[2] !== "x")) return null;
-    const R = rng(seedOf(ps[0] + "|" + ps[1])), lv = k.lv, T = TYPES[k.type];
+    if (!k || ps.length < 2) return null;
+    const force = ps.length >= 3 && (ps[ps.length - 1] === "o" || ps[ps.length - 1] === "x") ? ps[ps.length - 1] : null, seed = ps.slice(1, force ? -1 : undefined).join("|");
+    const R = rng(seedOf(kind + "|" + seed)), lv = k.lv, T = TYPES[k.type];
     const P = { tag, kind, type: k.type, lv, name: k.name, em: k.em, q: T.q, opts: T.opts.map((o) => o[0]), labels: Object.fromEntries(T.opts), why: WHY[kind], src: ["pr", "bansal"].map((s) => SRC[s]) };
     if (k.type === "dot") {
       const [a, b] = counts(R, lv, 22, 40), more = R() < 0.5 ? "L" : "R", base = 2.4 + R() * 0.4;
@@ -107,10 +109,10 @@
       P.ans = more; P.v = `${Math.round(lenL * 10)}-${Math.round(lenR * 10)}`;
     }
     // 助言ロボ：自信（%）と答え。自信の引き方は種類の乱数とは別（問題の形を変えずに当たり外れだけ決める）
-    const RA = rng(seedOf(ps[0] + "|" + ps[1] + ":ai")), [c0, c1] = CONF[lv];
+    const RA = rng(seedOf(kind + "|" + seed + ":ai")), [c0, c1] = CONF[lv];
     P.conf = ri(RA, c0, c1);
     const roll = RA();
-    P.aiOk = ps.length === 3 ? ps[2] === "o" : roll < P.conf / 100;
+    P.aiOk = force ? force === "o" : roll < P.conf / 100;
     P.ai = P.aiOk ? P.ans : P.opts.find((o) => o !== P.ans);
     return P;
   }
