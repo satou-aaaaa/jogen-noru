@@ -28,7 +28,7 @@ node qa/run.mjs   # 問題（9種類×400の種：答えを図の数・長さか
 - 1問を深くする：`depth.js` と `qa/depth-check.mjs` は shared-workflows `template/` の写しで、ここでは直さない。自信あり（①の答えにかける。当たりかは答え合わせで出す）・2段目・復習（1→3→7日後）。記録 `jgn-v1`・文字 `jgn-fs`・復習 `jgn-depth`。
 - 見くらべ帳：これまでの3つの正答率・頼りすぎ／頼らなさすぎ（`tot`）と、助言ロボの自信の高さごとの当たった割合・乗った割合（`cb`）。
 - 共有は遊ぶ人が押したときに開くリンクだけ。シェアの文に答え・図を出さない。感想は Issue フォーム（`.github/ISSUE_TEMPLATE/feedback.yml`）を開くだけ。応援は Ko-fi へのただのリンクだけ。
-- 外へ通信しない（CSP の `connect-src 'self'` を広げない）。見やすさ（`<!-- a11y:begin -->`〜`end`・`qa/a11y.mjs`）と引き継ぎ（`transfer.js`・`qa/transfer-check.mjs`）・成績（`kiroku`）は shared-workflows `template/` の写しで、ここでは直さない。
+- 記録や答えを外へ送らない（CSP の `connect-src 'self'` を広げない）。外から読むのは文字（Google Fonts：ふだんの Zen Maru Gothic と、見やすさの「読みやすい文字」の BIZ UDPGothic）だけで、QA もそれ以外の外の読み込みを落とす。見やすさ（`<!-- a11y:begin -->`〜`end`・`qa/a11y.mjs`）と引き継ぎ（`transfer.js`・`qa/transfer-check.mjs`）・成績（`kiroku`）は shared-workflows `template/` の写しで、ここでは直さない。
 - 画面の土台は屋台の値下げ合戦（yatai-negasen）から写した（ひな形の部品は `node scripts/sync-template.mjs` で入れた）。写し元の言葉が残っていないかを QA が見る。保存の読み直しは共通部品 GameStore（`<!-- store:begin -->`〜`end`）。
 - PWA：画面のファイルを足したら `sw.js` の `SHELL` にも足し、中身を大きく変えたら `CACHE` の版を上げる。アイコンは `node tools/make-icons.cjs`、`og.png` は `node tools/make-og.cjs`。
 - 公開リポジトリなので、個人情報・鍵を入れない。

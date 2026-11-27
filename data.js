@@ -97,7 +97,8 @@
     } else {
       const s = 44 + R() * 20, [p, q] = RATIO.len[lv], l = s * (p + R() * (q - p)), more = R() < 0.5 ? "L" : "R";
       let aL = R() * 180, aR = R() * 180;
-      if (lv > 0 && Math.abs(aL - aR) < 35) aR = (aR + 70) % 180; // 向きをちがえて、くらべにくくする
+      const dA = Math.abs(aL - aR) % 180; // 線は向きが無いので 180° で一回り（170° と 10° は 20° しかちがわない。CodeRabbit #1）
+      if (lv > 0 && Math.min(dA, 180 - dA) < 35) aR = (aR + 70) % 180; // 向きをちがえて、くらべにくくする
       if (lv === 0) aR = aL; // やさしいは同じ向き
       const seg = (len, deg) => { const t = (deg * Math.PI) / 180, dx = (Math.cos(t) * len) / 2, dy = (Math.sin(t) * len) / 2; return [r2(50 - dx), r2(50 - dy), r2(50 + dx), r2(50 + dy)]; };
       const lenL = more === "L" ? l : s, lenR = more === "L" ? s : l;

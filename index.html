@@ -1671,8 +1671,11 @@ $("howto").addEventListener("cancel", () => { if (!load().tut) save((s) => { s.t
 $("howto").addEventListener("close", () => { if (!load().tut) save((s) => { s.tut = true; }); }); // Esc で閉じても「見た」を残す
 $("howto-ok").onclick = () => { save((s) => { s.tut = true; }); const d = $("howto"); d.close ? d.close() : d.removeAttribute("open"); }; // 押したらすぐ残す
 
+// ブラウザの「進む」で戻ってきた画面：描き直せる画面はその画面を、途中の回・結果はホームを出し、# も消す（URL と画面を合わせる。CodeRabbit #1）
+const toHomeBare = () => { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* 使えない */ } home(); };
+const ROUTES = { practiceMenu: () => practiceMenu(), book: () => book(), achView: () => achView(), cal: () => cal(), about: () => about(), play: toHomeBare, endFinish: toHomeBare, result: toHomeBare };
 function home() {
-  Core.screens.route({}, home); Core.screens.mark(""); // 「戻る」でホームへ（sync-template の migrateBack）
+  Core.screens.route(ROUTES, home); Core.screens.mark(""); // 「戻る」でホームへ（sync-template の migrateBack）
   const s = load(), k = todayKey(), done = s.days[k], hdone = s.hdays[k];
   // 最後の1問を解いて結果を見る前に閉じた回は、開き直したら結果へ進める（記録をつける）
   for (const m of Object.keys(s.runs)) { const r = s.runs[m]; if (m !== "p" && m !== "e" && r && doneOf(r)) { MODE = m; return finish(); } }
@@ -1826,7 +1829,7 @@ function figHtml() {
   return `<svg class="fig" viewBox="0 0 210 100" role="img" aria-label="左の箱と右の箱に1本ずつ線。どちらが長いか見くらべる図">${box(0, 100, ln(P.lines.L, f.L))}${box(110, 100, ln(P.lines.R, f.R))}</svg><div class="figlab" aria-hidden="true"><span>左</span><span>右</span></div>`;
 }
 // 助言ロボのカード（自信のメーター。数字でも出す）
-const roboHtml = () => `<div class="robo" id="robo" role="status"><span class="rb" aria-hidden="true">🤖</span><div><small>助言ロボ</small><b>「${esc(lab(cur.P.ai))}」</b><span class="meter" aria-hidden="true"><i style="width:${cur.P.conf}%"></i></span><small>自信 <b class="cf">${cur.P.conf}%</b></small></div></div>`;
+const roboHtml = (say) => `<div class="robo" id="robo" role="status"${say ? ` data-a11y-say aria-label="助言ロボの答え「${esc(lab(cur.P.ai))}」。自信 ${cur.P.conf}%"` : ""}><span class="rb" aria-hidden="true">🤖</span><div><small>助言ロボ</small><b>「${esc(lab(cur.P.ai))}」</b><span class="meter" aria-hidden="true"><i style="width:${cur.P.conf}%"></i></span><small>自信 <b class="cf">${cur.P.conf}%</b></small></div></div>`;
 const okMark = (ok) => (ok ? `<b class="okm">✓ 当たり</b>` : `<b class="ngm">✕ 外れ</b>`);
 
 function play(stay) {
@@ -1860,7 +1863,7 @@ function play(stay) {
       <div class="sure-row">${Depth.sureHtml()}</div>
       <div class="choices two" id="choices" role="group" aria-label="自分だけの答え">${P.opts.map((o) => `<button class="ch" data-o="${o}" data-a11y-say><span><b>${esc(lab(o))}</b></span></button>`).join("")}</div>`
       : `<p class="mine" id="mine">あなた（自分だけ）：<b>${esc(lab(cur.a1))}</b>${st === 3 ? " " + okMark(cur.a1 === P.ans) : ""}</p>
-      ${roboHtml()}${st === 3 ? `<p class="mine">助言ロボ：${okMark(P.aiOk)}</p>` : ""}
+      ${roboHtml(st === 2)}${st === 3 ? `<p class="mine">助言ロボ：${okMark(P.aiOk)}</p>` : ""}
       ${st === 2 ? `<p class="q" id="ask" data-a11y-say>最後の答えは？　助言に乗る？ 乗らない？</p>` : ""}
       <div class="choices two" id="final" role="group" aria-label="最後の答え">${P.opts.map((o) => `<button class="ch fin" data-o="${o}"${st === 2 ? " data-a11y-say" : ""}><span><b>${esc(lab(o))}</b><small>${o === P.ai ? "🤖 助言に乗る" : "助言に乗らない"}</small></span></button>`).join("")}</div>`}
     </div>

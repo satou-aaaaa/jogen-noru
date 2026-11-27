@@ -22,6 +22,8 @@ const G = createRequire(import.meta.url)(path.join(root, "data.js"));
 
 const PINS = "dot0:30-22:88o,dot1:28-24:84o,len1:512-479:79o,len2:572-600:57o,mix2:21-23:61x,mix1:23-19:75o,len1:626-587:81o,dot2:38-40:58o,dot2:37-40:62x,mix2:25-27:64o;len0:590-687:96o,dot1:27-23:81o,mix1:26-31:82o,dot2:31-33:56o,len2:634-612:60x,mix1:29-24:82o,mix1:32-28:80o,dot2:28-26:61o,len2:623-647:65x,dot2:41-38:68o;mix0:23-31:93o,mix1:31-28:79x,dot1:30-35:83o,len2:485-508:65o,dot2:27-29:66o,dot1:39-34:77o,mix1:26-22:86x,len2:581-557:63o,dot2:33-35:56o,len2:623-601:62o"; // 過去の日の問題の印（変わったら過去の日の問題が変わっている。data.js を直したら作り直して PR に理由を書く）
 
+const FIGPIN = "7e5c1596"; // 過去の日の図（点・線・矢羽）の印。PINS と同じく、data.js を直して変わったら作り直して PR に理由を書く
+
 // ---- 1. 問題の作り方（ブラウザを使わない）----
 // 答えはゲームとは別に、図そのもの（点の数・線の端の座標）から数え直す
 const BOXW = { dot: 100, mix: 180 };
@@ -90,7 +92,7 @@ function placedOk(pts, w) {
       if (Ps.length !== 5 || Ps.some((P) => !P) || Ps.map((P) => P.lv).join() !== lvs || types.size !== 3) { bad.push(d + " " + name); continue; }
       if (Ps.filter((P) => P.aiOk).length !== 4 || list.filter((t) => t.endsWith("|o")).length !== 4) bad.push(d + " " + name + " 当たりが4問でない");
       const w = Ps.find((P) => !P.aiOk); wrongAll++; if (w.conf < 70) wrongLow++;
-      if (name === "今日") { if (list.join() === prev) sameAsPrev++; prev = list.join(); }
+      if (name === "今日") { const body = Ps.map((P) => JSON.stringify([P.kind, P.box, P.lines, P.fins, P.ai, P.conf])).join(); if (body === prev) sameAsPrev++; prev = body; } // タグには日付が入るので、出た図・助言そのものでくらべる（CodeRabbit #1）
       if (i < 60) Ps.forEach((P) => cover.add(P.kind));
     }
     if (JSON.stringify(G.dailyTags(d)) !== JSON.stringify(G.dailyTags(d))) bad.push(d + " 同じにならない");
@@ -101,6 +103,10 @@ function placedOk(pts, w) {
   // 過去の日の問題が変わらない（data.js を直したときの見張り）
   const snap = ["2026-11-27", "2026-11-28", "2027-01-01"].map((d) => [...G.dailyTags(d), ...G.hardTags(d)].map((t) => { const P = G.make(t); return `${P.kind}:${P.v}:${P.conf}${P.aiOk ? "o" : "x"}`; }).join(",")).join(";");
   check("過去の日（2026-11-27・11-28・2027-01-01）の5問と上級5問が作ったときのまま（種類・範囲・乱数の順を変えると変わる）", snap === PINS, snap);
+  // 数・長さが同じでも、点の位置や線の向きが変われば図は変わる。図そのもの（点・線の端・矢羽）も印でくらべる（CodeRabbit #1）
+  const fig = ["2026-11-27", "2026-11-28", "2027-01-01"].flatMap((d) => [...G.dailyTags(d), ...G.hardTags(d)]).map((t) => { const P = G.make(t); return JSON.stringify([P.box || null, P.lines || null, P.fins || null]); }).join(";");
+  let hf = 2166136261; for (let i = 0; i < fig.length; i++) { hf ^= fig.charCodeAt(i); hf = Math.imul(hf, 16777619) >>> 0; }
+  check("過去の日の図そのもの（点の位置・線の端・矢羽）も作ったときのまま", hf.toString(16) === FIGPIN, hf.toString(16));
 }
 
 // ---- 2. ファイルの中身 ----
@@ -207,6 +213,7 @@ try {
   check("図には読み上げ用の名前がある（role=img）", (await p.getAttribute("svg.fig", "role")) === "img" && ((await p.getAttribute("svg.fig", "aria-label")) || "").length > 5);
   await step1(p, false);
   check("②の画面：自分の答えと、助言ロボの答え・自信（%の数字とメーター）・助言に乗る／乗らないの2つ", await p.locator("#robo").count() === 1 && /自信 \d+%/.test(await p.textContent("#robo")) && await p.locator("#robo .meter").count() === 1 && await p.locator("#final .ch").count() === 2 && (await p.textContent("#final")).includes("助言に乗る") && (await p.textContent("#final")).includes("助言に乗らない") && (await p.textContent("#mine")).includes("あなた"));
+  check("②の「🔊 読む」は、助言ロボの答えと自信の数字も読む（CodeRabbit #1）", await p.evaluate(() => { const c = __nm.cur(), r = document.querySelector("#robo[data-a11y-say]"); return !!r && (r.getAttribute("aria-label") || "").includes(`自信 ${c.P.conf}%`) && (r.getAttribute("aria-label") || "").includes(c.P.labels[c.P.ai]); }));
   check("②では、自分だけの答えが当たりかをまだ見せない", !/当たり|外れ/.test(await p.textContent("#card")) && (await p.textContent("#msg")) === "");
   check("「助言に乗る」は助言ロボの答えのほうに付く", await p.evaluate(() => { const c = __nm.cur(); return document.querySelector(`#final .ch[data-o="${c.P.ai}"]`).textContent.includes("助言に乗る"); }));
   await p.reload(); await p.waitForTimeout(150); await p.click("#go-d");
@@ -258,6 +265,9 @@ try {
   check("練習の結果にも3つの正答率", await p.locator("#team .tb").count() === 3);
   // 見くらべ帳：助言ロボの自信ごとの表・種類を押すと、その種類だけで練習
   await p.click("#back"); await p.click("#go-dex");
+  // ブラウザの「戻る」「進む」で、URL と画面が合う（CodeRabbit #1：進むで #book のままホームが出た）
+  await p.goBack(); await p.waitForTimeout(150); await p.goForward(); await p.waitForTimeout(150);
+  check("「戻る」のあと「進む」で、見くらべ帳が出る（URL も #book）", await p.locator("#cbt").count() === 1 && new URL(p.url()).hash === "#book", p.url());
   check("見くらべ帳に、助言ロボの自信ごとの表（高い・ふつう・低い）と、これまでの3つの正答率", await p.locator("#cbt tr").count() === 4 && await p.locator("#team .tb").count() === 3);
   const firstKind = await p.getAttribute(".book button", "data-k");
   await p.click(".book button");
@@ -482,7 +492,8 @@ try {
       await q.click("#hint"); await q.waitForTimeout(100); await q.evaluate(() => __nm.play("p"));
       check("別のタブで③へ進んでいたら、この画面も③になる", await q.locator(".why button").count() === 4 && await q.evaluate(() => __nm.cur().step) === 3);
       await q.evaluate((t) => { __nm.save((s) => { s.runs.p.res.push({ m: 0 }); s.runs.p.cur = null; }); const d = JSON.parse(localStorage.getItem("jgn-depth")); d.rv[t] = { s: 2, due: "2099-01-01", t: 9 }; localStorage.setItem("jgn-depth", JSON.stringify(d)); }, tq);
-      await q.evaluate(() => { const h = document.querySelector("#hint"); if (h) { h.disabled = false; h.click(); } }); await q.waitForTimeout(50);
+      const hintHit = await q.evaluate(() => { const h = document.querySelector("#hint"); if (!h) return false; h.disabled = false; h.click(); return true; }); await q.waitForTimeout(50);
+      check("古い画面にヒントがあり、押せた（押さずに次へ進まない。CodeRabbit #1）", hintHit);
       check("別のタブで先に進んだ古い画面でヒントを押しても、復習の段は戻らない", await q.evaluate((t) => JSON.parse(localStorage.getItem("jgn-depth")).rv[t].s, tq) === 2);
     }
     // 復習の途中でヒントを使って日の来た問題が0になっても、ホームの「復習の続きから」で戻れる（2026-11-11 CodeRabbit）
@@ -530,18 +541,22 @@ try {
   // キーボードだけで遊べる（Tab と Enter）
   {
     const q = await newPage(); await closeHow(q);
-    await q.focus("#go-d"); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
-    await q.focus(`#choices .ch[data-o="${await optOf(q, true)}"]`); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
-    await q.focus(`#final .ch[data-o="${await optOf(q, true)}"]`); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
-    await q.focus(`.why button[data-g="${await grpNow(q)}"]`); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
-    check("キーボードだけで①②③と2段目を答えられる", await q.locator(".verdict").count() === 1);
+    // focus() で飛ばさず、Tab だけでたどり着けるかを見る（tabindex="-1" などで届かないと落ちる。CodeRabbit #1）
+    const tabTo = async (sel) => { await q.evaluate(() => { document.activeElement && document.activeElement.blur && document.activeElement.blur(); window.scrollTo(0, 0); }); for (let n = 0; n < 60; n++) { await q.keyboard.press("Tab"); if (await q.evaluate((s) => !!document.activeElement && document.activeElement.matches(s), sel)) return true; } return false; };
+    const reach = [];
+    reach.push(await tabTo("#go-d")); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
+    reach.push(await tabTo(`#choices .ch[data-o="${await optOf(q, true)}"]`)); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
+    reach.push(await tabTo(`#final .ch[data-o="${await optOf(q, true)}"]`)); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
+    reach.push(await tabTo(`.why button[data-g="${await grpNow(q)}"]`)); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
+    check("キーボードだけ（Tab で選び Enter）で①②③と2段目を答えられる", reach.every(Boolean) && await q.locator(".verdict").count() === 1, reach.join(","));
     await q.context().close();
   }
 } catch (e) { check("ブラウザでの検査が最後まで動く", false, e.stack.split("\n").slice(0, 3).join(" ")); }
 
 // 深さの部品（shared-workflows template/qa/depth-check.mjs）
 { const e = await checkDepth(readFileSync(path.join(root, "depth.js"), "utf8")); check("depth.js（自信をかける・復習）の動き", e.length === 0, e.join(" / ")); }
-{ const q = await newPage(); await closeHow(q);
+// 途中で押せずに止まっても、例外を落ちた項目にしてレポートまで進む（CodeRabbit #1）
+{ const q = await newPage(); try { await closeHow(q);
   check("保存に失敗したら、保存できるまで帯（#savewarn）で知らせ続け、保存できたら消す", await q.evaluate(async () => { const orig = Storage.prototype.setItem; Storage.prototype.setItem = function () { throw new Error("full"); }; __nm.save(() => {}); __nm.save(() => {}); const one = document.querySelectorAll("#savewarn").length === 1 && document.getElementById("savewarn").textContent.includes("保存できませんでした"); await new Promise((r) => setTimeout(r, 1500)); const stay = !!document.getElementById("savewarn"); Storage.prototype.setItem = orig; __nm.save(() => {}); return one && stay && !document.getElementById("savewarn"); }));
   await q.evaluate(() => __nm.start("e")); await q.waitForTimeout(100);
   await solve(q);
@@ -556,15 +571,15 @@ try {
     const back = await q.evaluate(() => { const r = __nm.load().runs.e; return r ? r.id : null; });
     await q.evaluate(() => { Storage.prototype.setItem = window.__origSet; __nm.save(() => {}); });
     check("保存に失敗したまま「ここで降りる」を押しても、終えた回が「とことんの続き」に戻らない", back === null && (await q.evaluate(() => __nm.load().runs.e)) === null, `${eid} → ${back}`); }
-  await q.close(); }
-{ const q = await newPage(); await closeHow(q);
+  } catch (e) { check("保存の失敗・ここで降りるの検査が最後まで動く", false, e.message.split("\n")[0]); } finally { await q.close().catch(() => {}); } }
+{ const q = await newPage(); try { await closeHow(q);
   await q.evaluate(() => { localStorage.setItem("jgn-v1", JSON.stringify({ v: 1, tut: true, days: {}, hdays: {}, adays: {}, dex: { constructor: 1, toString: 2, dot1: 1 }, runs: {}, kofi: {}, ach: {}, ebest: 0 })); }); await q.reload(); await q.waitForTimeout(150);
   check("記録に constructor などの鍵が入っても、見くらべ帳と実績の種類に数えない（CodeRabbit funka-level#1）", (await q.textContent("#go-dex")).includes("1/9") && await q.evaluate(() => __nm.tally(__nm.load()).kinds) === 1, await q.textContent("#go-dex"));
   await q.evaluate(() => { localStorage.setItem("jgn-v1", JSON.stringify({ v: 1, tut: true, days: {}, hdays: {}, adays: {}, dex: {}, runs: {}, kofi: {}, ach: {}, ebest: { toString: null }, tot: { n: { toString: null } }, cb: { h: [{ toString: null }] } })); }); await q.reload(); await q.waitForTimeout(150);
   check("記録の数の所に数でも文字でもない物（{toString:null}）が入っても、ホームが出る（toppu-yomi #1 の CodeRabbit）", await q.locator("#go-dex").count() === 1);
   await q.evaluate((d) => { localStorage.setItem("jgn-v1", JSON.stringify({ v: 1, tut: true, days: {}, hdays: {}, adays: {}, dex: {}, runs: { p: { mode: "p", date: d, list: ["dot1|w2x"], res: [], cur: { i: 0, tag: "dot1|w2x", a1: "L", a2: { toString: null }, w2: [{ toString: null }, "kaze"] }, id: "w2x" } }, kofi: {}, ach: {}, ebest: 0 })); }, TODAY); await q.reload(); await q.waitForTimeout(150);
   check("途中の答え・2段目のまちがいに文字でない物（{toString:null}）が入っても、ホームが出る（toukyu-yomi #1 の CodeRabbit）", await q.locator("#go-dex").count() === 1);
-  await q.close(); }
+  } catch (e) { check("壊れた記録の検査が最後まで動く", false, e.message.split("\n")[0]); } finally { await q.close().catch(() => {}); } }
 // game-core（shared-workflows template/qa/core-check.mjs）：遊び方・感想のリンク・不具合の帯（CodeRabbit nukemichi-fusagi#1）
 try {
   await checkCore({ browser, url, check, first: false }); // はじめての案内はゲームの firstClose が閉じるので、遊び方・感想・不具合の帯だけ見る
